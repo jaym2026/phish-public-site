@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YouTube Scam Videos</title>
+<style>
+:root{--bg:#111217;--panel:#181b1f;--border:rgba(204,204,220,.07);--border2:rgba(204,204,220,.14);
+--topbar:#141619;--text:rgba(204,204,220,.9);--weak:rgba(204,204,220,.62);--faint:rgba(204,204,220,.38);
+--title:#d8d9da;--green:#73bf69;--green-d:#37872d;--orange:#ff9830;--orange-d:#e0752d;--blue:#5794f2;
+--blue-d:#3562b8;--purple:#b877d9;--purple-d:#8f4bb0;--red:#f2495c;--red-d:#b02a37;--yellow:#fade2a;
+--grid:rgba(204,204,220,.09);--font:"Roboto","Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.45;
+-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+/* sticky: these pages are embedded in an iframe and read by scrolling, so a stamp
+   that only exists above the fold is a stamp nobody sees. */
+.topbar{display:flex;align-items:center;gap:10px;height:40px;padding:0 16px;background:var(--topbar);
+border-bottom:1px solid var(--border);font-size:13px;color:var(--weak);
+position:sticky;top:0;z-index:20}
+.topbar .crumb{color:var(--title);font-weight:500}.topbar .crumb .sep{color:var(--faint);margin:0 7px}
+.topbar .spacer{flex:1}.topbar .stamp{color:var(--faint);font-size:12px;white-space:nowrap}
+.foot{color:var(--faint);font-size:11px;padding:14px 8px 18px;text-align:center;
+border-top:1px solid var(--border);margin-top:10px}
+.foot b{color:var(--weak);font-weight:500}
+/* per-panel window label — states the exact span each chart covers, because the
+   lag, the weekly bucketing and the rate hold-back give them different end dates. */
+.panel>.head .through{color:var(--faint);font-size:11px;font-weight:400;margin-left:auto;
+padding-left:10px;white-space:nowrap;flex:none;order:2}
+.wrap{padding:8px;max-width:1600px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:3px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.panel>.head{padding:7px 10px 4px;font-size:13px;font-weight:500;color:var(--title);display:flex;align-items:center;gap:6px}
+/* The date range carries margin-left:auto, which pushes itself AND every sibling
+   after it to the right edge - so the tip icon, emitted after the title, ended up
+   marooned next to the date instead of beside the header it explains. Reorder with
+   flex `order`: the bare title text is an anonymous flex item and defaults to 0, so
+   giving the icon 1 and the range 2 seats the icon against the title without
+   touching any renderer. Reordering the title itself would not work - `order` has
+   no effect on an anonymous item. */
+.panel>.head .i{width:13px;height:13px;border:1px solid var(--faint);border-radius:50%;color:var(--faint);
+font-size:9px;line-height:11px;text-align:center;font-weight:700;flex:none;order:1}
+.panel>.body{padding:6px 10px 12px;flex:1;min-height:0}
+.md{background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:14px 18px}
+.md h1{font-size:20px;font-weight:500;color:#fff;margin:0 0 6px;letter-spacing:.2px;text-wrap:balance}
+.md h3{font-size:15px;font-weight:600;color:var(--title);margin:0 0 8px}
+.md p{margin:0 0 6px;color:var(--weak);max-width:118ch;font-size:13px;line-height:1.55}
+.md ul{margin:2px 0 0;padding-left:18px;color:var(--weak);columns:2;column-gap:32px}
+.md li{margin:0 0 4px;break-inside:avoid}.md strong{color:var(--text);font-weight:600}.md em{color:var(--faint)}
+.stat{position:relative;color:#fff;justify-content:space-between;min-height:88px}
+.stat .lbl{font-size:12.5px;font-weight:500;opacity:.92;padding:9px 12px 0}
+.stat .val{font-weight:500;letter-spacing:-.5px;padding:0 12px 12px;font-size:clamp(24px,2.7vw,40px);line-height:1.05;white-space:nowrap}
+.stat .val .u{font-size:.5em;font-weight:400;opacity:.85;margin-left:3px}
+.stat .val:has(+.sub){padding-bottom:4px}
+.stat .sub{padding:0 12px 11px;font-size:11px;line-height:1.35;opacity:.8;font-weight:400}
+.g-green{background:linear-gradient(120deg,var(--green),var(--green-d))}
+.g-orange{background:linear-gradient(120deg,var(--orange),var(--orange-d))}
+.g-blue{background:linear-gradient(120deg,var(--blue),var(--blue-d))}
+.g-purple{background:linear-gradient(120deg,var(--purple),var(--purple-d))}
+.g-red{background:linear-gradient(120deg,var(--red),var(--red-d))}
+svg{display:block;width:100%}.axis{fill:var(--faint);font-size:10px}
+.legend{display:flex;gap:14px;padding:2px 4px 0;font-size:11px;color:var(--weak);flex-wrap:wrap}
+.pnote{color:var(--weak);font-size:11.5px;line-height:1.45;padding:2px 4px 8px;border-bottom:1px solid var(--grid);margin-bottom:6px}
+.legend .k{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.hb{display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.hb .row{display:grid;grid-template-columns:var(--namew,150px) 1fr auto;align-items:center;gap:10px;font-size:12px}
+.hb .row .name{color:var(--weak);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb.wrap .row .name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2}
+.hb .track{height:19px;background:rgba(204,204,220,.05);border-radius:2px;overflow:hidden;display:flex}
+.hb .fill{height:100%;transform-origin:left;animation:grow .7s cubic-bezier(.2,.7,.3,1) both}
+.hb .num{color:var(--text);font-weight:500;min-width:56px;text-align:right}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.hb .fill{animation:none}}
+.geowrap{position:relative}.geo-lbl{fill:var(--text);font-size:10px;paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.geowrap circle{cursor:default;transition:fill-opacity .1s}.geowrap circle:hover{fill-opacity:.85}
+.geo-tip{position:absolute;left:0;top:0;pointer-events:none;z-index:6;background:#0b0e14;border:1px solid var(--border2);
+ border-radius:4px;padding:6px 10px;font-size:12px;line-height:1.35;color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,.55);
+ white-space:nowrap;transform:translate(-50%,calc(-100% - 13px));opacity:0;transition:opacity .09s}
+.geo-tip.on{opacity:1}.geo-tip .c{font-weight:600;color:#fff;margin-bottom:1px}
+.geo-tip .r{color:var(--weak)}.geo-tip .r b{color:var(--text);font-weight:600}
+.panel>.head .i[data-tip]{cursor:help}
+.itip.anchored{max-width:min(86vw,420px)}
+@media(max-width:600px){.panel>.head .i{width:17px;height:17px;font-size:11px;
+ line-height:15px}}  /* a 13px circle is under the 24px touch-target floor */
+.itip{position:fixed;left:0;top:0;pointer-events:none;z-index:30;max-width:280px;background:#0b0e14;
+ border:1px solid var(--border2);border-radius:4px;padding:7px 10px;font-size:12px;line-height:1.4;color:var(--text);
+ box-shadow:0 6px 20px rgba(0,0,0,.55);opacity:0;transition:opacity .09s}
+.itip.on{opacity:1}
+.note{color:var(--faint);font-size:11px;padding:12px 8px 6px;text-align:center}
+.note code{color:var(--weak)}
+/* Do NOT change the track count on small screens. Every panel's span is authored
+   against a 12-column basis, so a 6-track grid makes each `span 12` panel force
+   six IMPLICIT tracks: the six real columns collapse to 0px and content lands in
+   ragged implicit ones. Measured at 390px before this fix:
+     COLS = 0 0 0 0 0 0 108.9 108.9 40.8 40.8 40.8 40.8
+   which rendered two stat tiles at 24px and a chart at 40px.
+   Keep 12 tracks at every width and re-span the ITEMS instead. Spans are inline
+   styles, so overriding them needs !important — this is the documented case for
+   it, not a shortcut. */
+@media(max-width:900px){
+ .grid>[style*="span 4"]{grid-column:span 6!important}
+ .grid>[style*="span 6"]{grid-column:span 12!important}
+ .hb .row{grid-template-columns:100px 1fr auto}.md ul{columns:1}}
+@media(max-width:600px){
+ .grid>*{grid-column:span 12!important}
+ /* panels flagged mobile:"hide" - see render() */
+ .grid>[data-mobile="hide"]{display:none}
+ /* the date range is secondary; on a phone it steals the title's line */
+ .panel>.head .through{display:none}
+ /* axis text lives inside a 760-wide viewBox scaled to ~360, so a 10px label
+    renders at ~5px. Bump it in viewBox units to land near 9-10px on screen. */
+ svg .axis{font-size:19px}
+ .legend{font-size:12px}}
+
+/* -- redesign 2026-08-24 ------------------------------------------------- */
+.hero{display:flex;flex-direction:row;flex-wrap:wrap;gap:0;padding:22px 8px;align-items:center;background:
+ linear-gradient(120deg,rgba(87,148,242,.07),rgba(115,191,105,.05));border-color:var(--border2)}
+.hcell{flex:1 1 150px;text-align:center;padding:6px 12px;border-right:1px solid var(--border)}
+.hcell:last-child{border-right:0}
+@media(max-width:600px){.hcell{flex:1 1 45%;padding:10px 8px}
+ /* wrapped 2x2: kill the divider on the right-hand cell of each pair */
+ .hcell:nth-child(2n){border-right:0}
+ .hcell:nth-child(-n+2){border-bottom:1px solid var(--border)}}
+.hval{font-size:clamp(26px,4.4vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1.05}
+.hlbl{margin-top:6px;font-size:12px;color:var(--weak);letter-spacing:.04em;text-transform:uppercase}
+/* namespaced: .g-* already means 'panel background gradient' further up. */
+.hx-green{color:var(--green)}.hx-orange{color:var(--orange)}.hx-blue{color:var(--blue)}
+.hx-purple{color:var(--purple)}.hx-red{color:var(--red)}
+.livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);
+ margin-right:7px;box-shadow:0 0 0 0 rgba(242,73,92,.7);animation:pulse 2.2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(242,73,92,0)}100%{box-shadow:0 0 0 0 rgba(242,73,92,0)}}
+.act{display:flex;flex-direction:column}
+.arow{display:flex;align-items:baseline;gap:10px;padding:7px 2px;border-bottom:1px solid var(--border);
+ opacity:0;animation:fadein .4s ease forwards}
+.arow:last-child{border-bottom:0}
+@keyframes fadein{to{opacity:1}}
+/* align-self:center centred the dot against the WRAPPED height of the row, so
+   on mobile it floated beside line two. Pin it to the first line instead. */
+.adot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;
+ align-self:flex-start;margin-top:6px}
+.akind{font-size:10.5px;font-weight:700;letter-spacing:.09em;min-width:150px;flex:none;white-space:nowrap}
+.atxt{flex:1;color:var(--text)}
+.aago{color:var(--faint);font-size:12px;white-space:nowrap}
+.acnt{color:var(--weak);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fn{display:flex;flex-direction:column;gap:9px;padding-top:4px}
+.frow{display:flex;align-items:center;gap:12px}
+.fname{width:230px;flex:none;color:var(--weak)}
+.ftrack{flex:1;position:relative;height:26px;background:rgba(204,204,220,.05);border-radius:3px}
+.ffill{position:absolute;left:0;top:0;height:100%;border-radius:3px;
+ background:linear-gradient(90deg,var(--blue-d),var(--blue));transform-origin:left;
+ animation:grow .55s cubic-bezier(.2,.7,.3,1) both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.fnum{position:absolute;left:10px;top:0;line-height:26px;font-weight:600;color:#fff;
+ text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.fpct{width:186px;flex:none;text-align:right;color:var(--faint);font-size:12px}
+.ftrack.bare{background:none}
+.fnum.abs{position:static;line-height:26px;font-size:19px;font-weight:700;color:var(--title);text-shadow:none}
+.fsub{margin:2px 0 4px 242px;color:var(--faint);font-size:11.5px;letter-spacing:.03em;text-transform:uppercase}
+.fnote{margin:10px 0 0 242px;color:var(--faint);font-size:12px;line-height:1.5;max-width:640px}
+@media(max-width:640px){.fnote{margin-left:0}}
+@media(max-width:640px){.fsub{margin-left:0}}
+.mth{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;padding-top:2px}
+.mth dt{color:var(--title);font-weight:600}
+.mth dd{margin:0;color:var(--weak)}
+@media(max-width:600px){
+ /* stack each event: marker+kind, then the text, then the age */
+ .arow{flex-wrap:wrap;gap:4px 8px;padding:9px 2px}
+ .akind{min-width:0}
+ .atxt{flex:1 1 100%;order:3;padding-left:14px}
+ .aago{margin-left:auto}}
+@media(max-width:640px){.fname{width:120px}.fpct{display:none}.akind{min-width:0}
+ .mth{grid-template-columns:1fr}.mth dd{margin-bottom:6px}}
+
+</style>
+</head>
+<body>
+<div class="topbar"><span class="spacer"></span><span class="stamp">Updated 2026-11-23 01:39 UTC</span></div><div class="wrap"><div class="grid" id="grid"></div><div class="foot">Updated <b>2026-11-23 01:39 UTC</b> · rebuilt automatically every 30 minutes. Ecosystem panels are intentionally delayed 7 days; weekly panels show complete weeks only, so the current week appears once it closes; outcome and removal-rate panels end once a week can be fully scored, up to five weeks back.</div></div><script>
+const DATA={"pub_show_youtube_lures_cut": [[1777, 795, 147, 1490, 31, 1068, 69]], "pub_show_youtube_cumulative": [["2026-09-19T00:00:00Z", 0, 9, 0, 0], ["2026-09-20T00:00:00Z", 9, 47, 0, 0], ["2026-09-21T00:00:00Z", 86, 71, 0, 0], ["2026-09-22T00:00:00Z", 86, 84, 0, 0], ["2026-09-23T00:00:00Z", 86, 98, 0, 0], ["2026-09-24T00:00:00Z", 345, 113, 2, 0], ["2026-09-25T00:00:00Z", 428, 122, 2, 0], ["2026-09-26T00:00:00Z", 428, 137, 2, 0], ["2026-09-27T00:00:00Z", 428, 152, 2, 0], ["2026-09-28T00:00:00Z", 531, 154, 2, 1], ["2026-09-29T00:00:00Z", 532, 169, 2, 1], ["2026-09-30T00:00:00Z", 892, 218, 2, 1], ["2026-10-01T00:00:00Z", 897, 246, 2, 1], ["2026-10-02T00:00:00Z", 970, 276, 2, 1], ["2026-10-03T00:00:00Z", 970, 304, 5, 1], ["2026-10-04T00:00:00Z", 970, 340, 5, 1], ["2026-10-05T00:00:00Z", 998, 370, 5, 2], ["2026-10-06T00:00:00Z", 1008, 402, 5, 4], ["2026-10-07T00:00:00Z", 1008, 423, 5, 4], ["2026-10-08T00:00:00Z", 1008, 443, 6, 4], ["2026-10-09T00:00:00Z", 1057, 455, 6, 6], ["2026-10-10T00:00:00Z", 1057, 470, 6, 6], ["2026-10-11T00:00:00Z", 1058, 474, 6, 6], ["2026-10-12T00:00:00Z", 1137, 504, 9, 8], ["2026-10-13T00:00:00Z", 1158, 534, 9, 8], ["2026-10-14T00:00:00Z", 1159, 564, 10, 8], ["2026-10-15T00:00:00Z", 1159, 594, 11, 9], ["2026-10-16T00:00:00Z", 1167, 624, 11, 9], ["2026-10-17T00:00:00Z", 1167, 654, 11, 10], ["2026-10-18T00:00:00Z", 1378, 684, 11, 11], ["2026-10-19T00:00:00Z", 1378, 699, 11, 12], ["2026-10-20T00:00:00Z", 1400, 729, 11, 12], ["2026-10-21T00:00:00Z", 1400, 759, 14, 12], ["2026-10-22T00:00:00Z", 1608, 789, 14, 12], ["2026-10-23T00:00:00Z", 1608, 819, 17, 12], ["2026-10-24T00:00:00Z", 1608, 848, 17, 12], ["2026-10-25T00:00:00Z", 1608, 878, 17, 12], ["2026-10-26T00:00:00Z", 1610, 906, 17, 12], ["2026-10-27T00:00:00Z", 1649, 936, 19, 12], ["2026-10-28T00:00:00Z", 1702, 966, 19, 12], ["2026-10-29T00:00:00Z", 1707, 996, 19, 14], ["2026-10-30T00:00:00Z", 1707, 1026, 20, 14], ["2026-10-31T00:00:00Z", 1707, 1056, 20, 14], ["2026-11-01T00:00:00Z", 1707, 1085, 20, 41], ["2026-11-02T00:00:00Z", 1707, 1115, 20, 41], ["2026-11-03T00:00:00Z", 1715, 1144, 23, 41], ["2026-11-04T00:00:00Z", 1715, 1174, 23, 41], ["2026-11-05T00:00:00Z", 1717, 1204, 28, 41], ["2026-11-06T00:00:00Z", 1717, 1233, 28, 41], ["2026-11-07T00:00:00Z", 1717, 1262, 28, 41], ["2026-11-08T00:00:00Z", 1717, 1286, 29, 41], ["2026-11-09T00:00:00Z", 1718, 1304, 29, 58], ["2026-11-10T00:00:00Z", 1718, 1332, 29, 59], ["2026-11-11T00:00:00Z", 1718, 1350, 29, 59], ["2026-11-12T00:00:00Z", 1718, 1351, 29, 61], ["2026-11-13T00:00:00Z", 1718, 1369, 29, 66], ["2026-11-14T00:00:00Z", 1720, 1383, 29, 66], ["2026-11-15T00:00:00Z", 1757, 1388, 29, 66], ["2026-11-16T00:00:00Z", 1762, 1403, 29, 67], ["2026-11-17T00:00:00Z", 1763, 1430, 29, 67], ["2026-11-18T00:00:00Z", 1763, 1434, 30, 67], ["2026-11-19T00:00:00Z", 1764, 1450, 30, 69], ["2026-11-20T00:00:00Z", 1776, 1480, 30, 69], ["2026-11-21T00:00:00Z", 1777, 1490, 30, 69], ["2026-11-22T00:00:00Z", 1777, 1490, 31, 69]]};
+const PANELS=[{"type": "stat", "span": 3, "title": "Videos leading nowhere now", "src": "pub_show_youtube_lures_cut", "field": 0, "color": "green", "fmt": "int"}, {"type": "stat", "span": 3, "title": "...of them still listed on YouTube", "src": "pub_show_youtube_lures_cut", "field": 5, "color": "green", "fmt": "int"}, {"type": "stat", "span": 3, "title": "Pages behind them, offline after my report", "src": "pub_show_youtube_lures_cut", "field": 2, "color": "green", "fmt": "int", "sub": "posted by %N% channels", "subf": 1}, {"type": "stat", "span": 3, "title": "Relinked by the scammer since", "src": "pub_show_youtube_lures_cut", "field": 6, "color": "red", "fmt": "int"}, {"type": "stat", "span": 6, "title": "Videos I reported to YouTube", "src": "pub_show_youtube_lures_cut", "field": 3, "color": "orange", "fmt": "int"}, {"type": "stat", "span": 6, "title": "Removed by YouTube for a rule violation", "src": "pub_show_youtube_lures_cut", "field": 4, "color": "purple", "fmt": "int"}, {"type": "mline", "span": 12, "title": "Running totals by day\u003cspan class=\"through\">2026-09-19 → 2026-11-22\u003c/span>", "src": "pub_show_youtube_cumulative", "x": 0, "tip": "Green: videos that lead nowhere today, counted on the day a page I reported came down; a video the scammer relinks leaves this line. Red: videos the scammer relinked to a new live page, by the day the new link appeared. Orange: videos I reported to YouTube. Violet: reported videos YouTube later removed, where its own notice says they broke its rules. This shows timing, not cause: someone else's report may have prompted the same removal.", "series": [{"i": 1, "label": "Leading nowhere now", "color": "green"}, {"i": 4, "label": "Relinked by the scammer", "color": "red"}, {"i": 2, "label": "Reported to YouTube", "color": "orange"}, {"i": 3, "label": "Removed by YouTube for a rule violation", "color": "purple"}]}];
+const LAND="";
+
+const G={green:'var(--green)',orange:'var(--orange)',blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',yellow:'var(--yellow)'};
+const fmtSI=n=>{n=+n;return n>=1e6?(n/1e6).toFixed(2)+' Mil':n>=1000?(n/1000).toFixed(2)+' K':''+n};
+const fmt=(v,k)=>{v=+v;if(k==='si')return fmtSI(v);if(k==='pct')return (Number.isInteger(v)?v:v.toFixed(1))+'%';
+ if(k==='dur')return v>=24?(v/24).toFixed(2)+' days':v.toFixed(1)+' h';if(k==='h1')return v.toFixed(1)+' h';
+ if(k==='int')return v.toLocaleString();return ''+v};
+const el=(h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
+// Row strings come from the database (brand, country, platform names) and go into
+// innerHTML, so they are escaped; panel titles and text are ours and carry markup.
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function statVal(s,k){const f=fmt(s,k);const m=f.match(/^([\d.,]+)\s*(.*)$/);return m?`${m[1]}${m[2]?`<span class="u">${m[2]}</span>`:''}`:f}
+
+function drawStat(p,D){const row=(D[p.src]||[[]])[0]||[];const v=row[p.field];
+ const e=el(`<div class="panel stat g-${p.color}" style="grid-column:span ${p.span}"><div class="lbl">${p.title}</div>
+  <div class="val">${statVal(v,p.fmt)}</div>${p.sub?`<div class="sub">${p.sub.replace('%N%',(row[p.subf]||0).toLocaleString())}</div>`:''}</div>`);return e}
+
+function drawText(p){return el(`<div class="panel md" style="grid-column:span ${p.span}">${p.html}</div>`)}
+
+function drawHbar(p,D){const rows=D[p.src]||[];const max=Math.max(1,...rows.map(r=>+r[p.value]));
+ // p.labels renames a stored category for the reader (see SURVIVAL_LABELS).
+ const nm=r=>(p.labels&&p.labels[r[p.name]])||r[p.name];
+ const body=rows.map((r,i)=>`<div class="row"><span class="name" title="${esc(nm(r))}">${esc(nm(r))}</span>
+  <div class="track"><span class="fill" style="width:${(+r[p.value]/max*100).toFixed(1)}%;background:${G[p.color]};border-radius:2px;animation-delay:${i*.04}s"></span></div>
+  <span class="num">${fmt(r[p.value],p.fmt)}</span></div>`).join('');
+ return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div><div class="body"><div class="hb${p.wrap?' wrap':''}" style="--namew:${p.namew||150}px">${body}</div></div></div>`)}
+
+function drawStack(p,D){const rows=D[p.src]||[];const max=Math.max(1,...rows.map(r=>(+r[p.a])+(+r[p.b])));
+ const body=rows.map((r,i)=>{const a=+r[p.a],b=+r[p.b],tot=a+b||1;
+  return `<div class="row"><span class="name" title="${esc(r[p.name])}">${esc(r[p.name])}</span>
+   <div class="track" style="width:${(tot/max*100).toFixed(1)}%">
+    <span class="fill" style="width:${(a/tot*100).toFixed(1)}%;background:${G[p.aColor]};animation-delay:${i*.05}s"></span>
+    <span class="fill" style="width:${(b/tot*100).toFixed(1)}%;background:${G[p.bColor]};animation-delay:${i*.05}s"></span>
+   </div><span class="num">${fmt(tot,p.fmt)}</span></div>`}).join('');
+ // Optional context line. Its numbers come from a SEPARATE source row rather
+ // than the chart rows, so a category deliberately excluded from the chart can
+ // still be stated above it instead of silently vanishing from the page.
+ let note='';
+ if(p.note){const nr=(D[p.noteSrc]||[])[0];
+  if(nr)note=`<div class="pnote">${p.note.replace(/%A%/g,(+nr[0]).toLocaleString()).replace(/%B%/g,(+nr[1]).toLocaleString()).replace(/%P%/g,esc(nr[2]))}</div>`}
+ return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div><div class="body">
+  ${note}<div class="legend"><span><span class="k" style="background:${G[p.aColor]}"></span>${p.aLabel}</span><span><span class="k" style="background:${G[p.bColor]}"></span>${p.bLabel}</span></div>
+  <div class="hb" style="padding-top:8px">${body}</div></div></div>`)}
+
+function xticks(rows,xi){const n=rows.length;const idx=[0,Math.floor(n/3),Math.floor(2*n/3),n-1];
+ return [...new Set(idx)].map(i=>({i,label:String(rows[i][xi]).slice(0,10).slice(5)}))}
+
+function drawLine(p,D){const rows=D[p.src]||[];if(!rows.length)return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}</div><div class="body"></div></div>`);
+ const W=760,H=200,pad={l:40,r:12,t:10,b:22},iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+ const ys=rows.map(r=>+r[p.y]);const max=Math.max(1,...ys)*1.08;
+ const x=i=>pad.l+iw*i/(rows.length-1||1),y=v=>pad.t+ih*(1-v/max);
+ let d='M'+x(0)+' '+y(ys[0]);ys.forEach((v,i)=>d+=' L'+x(i).toFixed(1)+' '+y(v).toFixed(1));
+ const area=d+` L${x(rows.length-1)} ${pad.t+ih} L${x(0)} ${pad.t+ih} Z`;
+ let gl='';for(let g=0;g<=3;g++){const gy=pad.t+ih*g/3,gv=max*(1-g/3);gl+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${gy}" y2="${gy}" stroke="var(--grid)"/><text x="4" y="${gy+3}" class="axis">${fmt(Math.round(gv),p.fmt)}</text>`}
+ const anch=i=>i===0?'start':(i>=rows.length-1?'end':'middle');
+ let xl='';xticks(rows,p.x).forEach(t=>xl+=`<text x="${x(t.i)}" y="${H-6}" class="axis" text-anchor="${anch(t.i)}">${t.label}</text>`);
+ const gid='ar'+Math.abs([...p.title].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7));
+ return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div><div class="body">
+  <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:210px">
+   <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${G[p.color]}" stop-opacity=".32"/><stop offset="1" stop-color="${G[p.color]}" stop-opacity="0"/></linearGradient></defs>
+   ${gl}${xl}<path d="${area}" fill="url(#${gid})"/><path d="${d}" fill="none" stroke="${G[p.color]}" stroke-width="2"/>
+   <circle cx="${x(rows.length-1)}" cy="${y(ys[ys.length-1])}" r="3.2" fill="${G[p.color]}"/></svg>
+  <div class="legend"><span><span class="k" style="background:${G[p.color]}"></span>${p.label} &nbsp;<strong style="color:var(--text)">${fmt(ys[ys.length-1],p.fmt)}</strong></span></div></div></div>`)}
+
+function drawMline(p,D){const W=760,H=200,pad={l:40,r:12,t:10,b:22},iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+ const maps=p.series.map(s=>{const m={};(D[s.src||p.src]||[]).forEach(r=>{const v=r[s.i];if(v!==null&&v!==undefined&&v!=='')m[String(r[p.x])]=+v});return m});
+ const keys=[...new Set(maps.flatMap(m=>Object.keys(m)))].sort();
+ if(!keys.length)return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}</div><div class="body"></div></div>`);
+ let max=1;maps.forEach(m=>Object.values(m).forEach(v=>max=Math.max(max,v)));max*=1.1;
+ const x=i=>pad.l+iw*i/(keys.length-1||1),y=v=>pad.t+ih*(1-v/max);
+ let gl='';for(let g=0;g<=3;g++){const gy=pad.t+ih*g/3;gl+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${gy}" y2="${gy}" stroke="var(--grid)"/><text x="4" y="${gy+3}" class="axis">${Math.round(max*(1-g/3))}</text>`}
+ const anch=i=>i===0?'start':(i>=keys.length-1?'end':'middle');
+ let xl='';xticks(keys.map(k=>[k]),0).forEach(t=>xl+=`<text x="${x(t.i)}" y="${H-6}" class="axis" text-anchor="${anch(t.i)}">${t.label}</text>`);
+ let paths='',leg='';p.series.forEach((s,si)=>{const m=maps[si];let d='',pen=false;
+  keys.forEach((k,i)=>{const v=m[k];if(v===undefined){pen=false;return}d+=(pen?' L':' M')+x(i).toFixed(1)+' '+y(v).toFixed(1);pen=true});
+  if(d)paths+=`<path d="${d}" fill="none" stroke="${G[s.color]}" stroke-width="2"/>`;
+  leg+=`<span><span class="k" style="background:${G[s.color]}"></span>${s.label}</span>`});
+ return el(`<div class="panel" style="grid-column:span ${p.span}"><div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div><div class="body">
+  <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:210px">${gl}${xl}${paths}</svg>
+  <div class="legend">${leg}</div></div></div>`)}
+
+function drawGeo(p,D){const rows=D[p.src]||[];const W=760,H=340,pad=14,iw=W-2*pad,ih=H-2*pad;
+ const proj=(lon,lat)=>[pad+(lon+180)/360*iw, pad+(90-lat)/180*ih];
+ const max=Math.max(1,...rows.map(r=>+r[3]));
+ // LAND is in degrees (x=lon, y=-lat); this affine map is proj() as a transform,
+ // so the outline follows W/H/pad without being regenerated. Fill only — a stroke
+ // would be scaled anisotropically by it.
+ const sx=iw/360,sy=ih/180,land=LAND?`<path d="${LAND}" transform="translate(${(pad+180*sx).toFixed(2)} ${(pad+90*sy).toFixed(2)}) scale(${sx.toFixed(4)} ${sy.toFixed(4)})" fill="rgba(204,204,220,.075)"/>`:'';
+ let grat='';for(let lon=-150;lon<=150;lon+=30){const[gx]=proj(lon,0);grat+=`<line x1="${gx}" x2="${gx}" y1="${pad}" y2="${H-pad}" stroke="var(--grid)"/>`}
+ for(let lat=-60;lat<=60;lat+=30){const[,gy]=proj(0,lat);grat+=`<line x1="${pad}" x2="${W-pad}" y1="${gy}" y2="${gy}" stroke="var(--grid)"/>`}
+ const[,eqy]=proj(0,0);grat+=`<line x1="${pad}" x2="${W-pad}" y1="${eqy}" y2="${eqy}" stroke="rgba(204,204,220,.16)"/>`;
+ const REG=[['NORTH AMERICA',-100,48],['SOUTH AMERICA',-58,-14],['EUROPE',16,56],['AFRICA',20,2],['ASIA',96,50],['OCEANIA',140,-27]];
+ let reg='';REG.forEach(a=>{const[rx,ry]=proj(a[1],a[2]);reg+=`<text x="${rx.toFixed(0)}" y="${ry.toFixed(0)}" text-anchor="middle" fill="rgba(204,204,220,.10)" font-size="12.5" font-weight="700" letter-spacing="1.4">${a[0]}</text>`});
+ const sorted=[...rows].sort((a,b)=>b[3]-a[3]);let bub='',lbl='';
+ sorted.forEach((r,i)=>{const[cx,cy]=proj(+r[2],+r[1]);const rad=3+Math.sqrt(+r[3]/max)*20;
+  const t=+r[3]/max;const col=t>.5?'var(--red)':t>.2?'var(--orange)':'var(--yellow)';
+  bub+=`<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${rad.toFixed(1)}" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="1" data-c="${esc(r[0])}" data-u="${+r[3]}" data-l="${+r[4]}"></circle>`;
+  if(i<7)lbl+=`<text class="geo-lbl" x="${(cx+rad+3).toFixed(0)}" y="${(cy+3).toFixed(0)}">${esc(r[0])}</text>`});
+ const e=el(`<div class="panel geowrap" style="grid-column:span ${p.span}"><div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div><div class="body">
+  <svg viewBox="0 0 ${W} ${H}" style="height:340px">${land}${grat}${reg}${bub}${lbl}</svg>
+  <div class="geo-tip"></div>
+  <div class="legend"><span>Bubble size &amp; color = distinct phishing URLs hosted in that country (last 30 days). Hosting geography, not operator origin.</span></div></div></div>`);
+ const tip=e.querySelector('.geo-tip');
+ e.querySelectorAll('circle').forEach(ci=>{
+  ci.addEventListener('pointerenter',()=>{tip.innerHTML=`<div class="c">${esc(ci.dataset.c)}</div><div class="r"><b>${(+ci.dataset.u).toLocaleString()}</b> URLs &middot; <b>${(+ci.dataset.l).toLocaleString()}</b> still live</div>`;tip.classList.add('on')});
+  ci.addEventListener('pointermove',ev=>{const rc=e.getBoundingClientRect();tip.style.left=(ev.clientX-rc.left)+'px';tip.style.top=(ev.clientY-rc.top)+'px'});
+  ci.addEventListener('pointerleave',()=>tip.classList.remove('on'))});
+ return e}
+
+const DRAW={hero:drawHero,activity:drawActivity,funnel:drawFunnel,text:drawText,stat:drawStat,hbar:drawHbar,stack:drawStack,line:drawLine,mline:drawMline,geo:drawGeo};
+// A panel may carry mobile:"hide". Stamped here rather than in each renderer so
+// it works for every panel type, including ones added later. Note this hides with
+// CSS, so the panel's data is still in the page payload - the saving is screen
+// space and scroll length, not bytes. It is also live: rotating a phone into
+// landscape past the breakpoint brings the panel back, which a render-time skip
+// would not do.
+function render(D,PANELS){const g=document.getElementById('grid');PANELS.forEach(p=>{try{
+ const el=DRAW[p.type](p,D);
+ if(p.mobile)el.dataset.mobile=p.mobile;
+ g.appendChild(el)}catch(e){console.error(p,e)}})}
+// styled tooltip for the panel ⓘ icons — delegated, one shared element, cursor-following
+(function(){const tip=document.createElement('div');tip.className='itip';document.body.appendChild(tip);
+ const near=t=>t&&t.closest?t.closest('.i[data-tip]'):null;
+ // Keep the whole box on screen. It used to be centred on the cursor with
+ // transform:translate(-50%,...), which cannot be clamped — so an icon at the
+ // left edge of a panel header (e.g. "Live activity") had its tooltip's left
+ // half rendered off-viewport and the first words were unreadable.
+ // Preference is above-centred; it falls below when there is no room above,
+ // and slides horizontally rather than overflowing either edge.
+ function place(x,y,below){const m=10,w=tip.offsetWidth,h=tip.offsetHeight;
+  const L=Math.min(Math.max(x-w/2,m),Math.max(m,window.innerWidth-w-m));
+  let T=below?y+10:y-h-12;
+  if(T<m)T=y+10;                                  // no room above -> go below
+  if(T+h>window.innerHeight-m)T=Math.max(m,y-h-12); // none below either -> above
+  tip.style.left=L+'px';tip.style.top=T+'px';}
+ document.addEventListener('pointerover',e=>{const t=near(e.target);if(t&&t.dataset.tip){
+   tip.textContent=t.dataset.tip;tip.classList.add('on');
+   const r=t.getBoundingClientRect();place(r.left+r.width/2,r.top);}});
+ document.addEventListener('pointermove',e=>{if(tip.classList.contains('on')&&!tip.classList.contains('anchored'))place(e.clientX,e.clientY);});
+ document.addEventListener('pointerout',e=>{if(e.pointerType==='mouse'&&near(e.target))tip.classList.remove('on');});
+ // Touch has no hover and no cursor for a cursor-following tooltip to follow, so
+ // the icons were inert on mobile. Tap toggles instead, anchored to the icon;
+ // tapping anywhere else dismisses.
+ document.addEventListener('click',e=>{const t=near(e.target);
+  if(!t){tip.classList.remove('on','anchored');return}
+  e.preventDefault();e.stopPropagation();
+  if(tip.classList.contains('on')&&tip.dataset.for===t.dataset.tip){
+    tip.classList.remove('on','anchored');return}
+  const r=t.getBoundingClientRect();
+  tip.textContent=t.dataset.tip;tip.dataset.for=t.dataset.tip;
+  tip.classList.add('on','anchored');
+  place(r.left+r.width/2, r.bottom, true);},true);})();
+
+// -- redesign 2026-08-24 -----------------------------------------------------
+// hero: the scoreboard directly under the headline, larger than a stat tile
+// because these are the first numbers a visitor should read.
+// An item may name its own `src`, the way a drawMline series does. The hero
+// mixes two tables on purpose: the takedown cell reads pub_show_headline so it
+// is the SAME query as the homepage teaser rather than a second one that merely
+// agrees today -- pub_scoreboard's equivalent also accepts
+// takedown_confirmed_via_urlhaus, and the 28 such rows contribute nothing only
+// because all of them are URLhaus-feed detections, which it leaves out.
+function drawHero(p,D){
+ const cells=p.items.map(it=>{const row=(D[it.src||p.src]||[[]])[0]||[];
+  const v=(it.lit!==undefined)?it.lit:fmt(row[it.field],it.fmt);
+  return `<div class="hcell"><div class="hval hx-${it.color}">${v}</div><div class="hlbl">${it.label}</div></div>`}).join('');
+ return el(`<div class="panel hero" style="grid-column:span ${p.span}">${cells}</div>`)}
+// activity: sanitized recent events. No URL, domain, IP, ASN, operator handle or
+// webhook exists in this data - see publish_public_stats.LIVE_EVENTS.
+function drawActivity(p,D){const rows=D[p.src]||[];
+ const ago=t=>{const s=(Date.now()-Date.parse(String(t).replace(' ','T')+'Z'))/1000;
+  if(!isFinite(s)||s<0)return'just now';
+  if(s<90)return Math.max(1,Math.round(s))+' seconds ago';
+  if(s<5400)return Math.round(s/60)+' minutes ago';
+  if(s<172800)return Math.round(s/3600)+' hours ago';
+  return Math.round(s/86400)+' days ago'};
+ const K={DETECTED:'blue',TAKEDOWN:'green',CAMPAIGN:'blue',CAMPAIGN_DOWN:'green',C2_DOWN:'green',YOUTUBE_DOWN:'green',WEBHOOK_DOWN:'green',LURES_CUT:'green'};
+ // The chip is the only place a row states what HAPPENED: DETECTED and
+ // TAKEDOWN each carry their verb, and a bare CAMPAIGN did not — sitting
+ // beside a green TAKEDOWN it read as a campaign having been removed, when
+ // LIVE_EVENTS sources it from campaigns.first_seen and it means a
+ // cluster was FOUND. Kept as a display map so the kind key (and the
+ // per-kind color and rank) stays exactly what the query emits.
+ const LBL={CAMPAIGN:'CAMPAIGN DETECTED',CAMPAIGN_DOWN:'CAMPAIGN TAKEDOWN',C2_DOWN:'C2 TAKEDOWN',YOUTUBE_DOWN:'VIDEO REMOVED',WEBHOOK_DOWN:'WEBHOOK DISABLED',LURES_CUT:'YOUTUBE LURES CUT'};
+ const body=rows.map((r,i)=>`<div class="arow" style="animation-delay:${i*.05}s">
+   <span class="adot hx-${K[r[0]]||'blue'}"></span><span class="akind hx-${K[r[0]]||'blue'}">${LBL[r[0]]||esc(r[0])}</span>
+   <span class="atxt">${esc(r[1])}</span>${p.count&&r[3]!=null?`<span class="acnt">${(+r[3]).toLocaleString()} in 7 days</span>`:''}<span class="aago" data-t="${esc(r[2])}">${ago(r[2])}</span></div>`).join('');
+ const e=el(`<div class="panel" style="grid-column:span ${p.span}">
+  <div class="head"><span class="livedot"></span>${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div>
+  <div class="body"><div class="act">${body||'<div class="arow"><span class="atxt">No qualifying events in the last 7 days.</span></div>'}</div></div></div>`);
+ setInterval(()=>e.querySelectorAll('.aago').forEach(n=>n.textContent=ago(n.dataset.t)),30000);
+ return e}
+// funnel: strictly nested stages, so each bar is a real subset of the one above.
+const DEN={2:'of all detected',3:'of those reported',4:'of those confirmed offline',5:'of those closed as removed'};
+function drawFunnel(p,D){const rows=D[p.src]||[];
+ // Intake dwarfs the enforcement stages by ~28x, so one linear scale renders the
+ // three stages that carry the story as identical slivers. Intake is shown as a
+ // figure without a bar, and the chain below is scaled among itself. No minimum
+ // bar width is applied anywhere - a padded bar would misstate the ratio.
+ const chain=rows.filter(r=>r[3]!=null);
+ const max=Math.max(1,...chain.map(r=>+r[2]));
+ const body=rows.map((r,i)=>{
+  if(r[3]==null)return `<div class="frow intake"><span class="fname">${esc(r[1])}</span>
+    <div class="ftrack bare"><span class="fnum abs">${(+r[2]).toLocaleString()}</span></div>
+    <span class="fpct">detected in total</span></div>
+   <div class="fsub">of which, the enforcement chain &mdash; each stage a subset of the one above</div>`;
+  const w=+r[2]/max*100;
+  return `<div class="frow"><span class="fname">${esc(r[1])}</span>
+   <div class="ftrack"><span class="ffill" style="width:${w.toFixed(2)}%;animation-delay:${i*.08}s"></span>
+    <span class="fnum">${(+r[2]).toLocaleString()}</span></div>
+   <span class="fpct">${fmt(r[3],'pct')+' '+(DEN[r[0]]||'of previous')}</span></div>`}).join('');
+ return el(`<div class="panel" style="grid-column:span ${p.span}">
+  <div class="head">${p.title}<span class="i" data-tip="${(p.tip||'').replace(/"/g,'&quot;')}">i</span></div>
+  <div class="body"><div class="fn">${body}</div>
+   <div class="fnote">Most of the gap between the first row and the chain below is
+   sites that had already gone offline before I could report them &mdash; a site that is
+   already down is not reported to anyone. The bars are scaled to the chain, not to
+   the total above it, so the top bar being full means it is the largest of the four
+   &mdash; not that it is most of what I detected.</div></div></div>`)}
+
+
+render(DATA,PANELS);
+</script>
+</body>
+</html>
